@@ -121,25 +121,26 @@ scrape_configs:
   - job_name: netgear_plus
     scrape_interval: 30s
     scrape_timeout: 30s        # see "Slow switches" below -- raise if needed
+    metrics_path: /probe
     static_configs:
       # Switches using the 'default' module's password.
       - targets:
-          - 192.168.1.5
-          - 192.168.1.6
-        params:
-          module: [default]
+          - "192.168.1.5"
+          - "192.168.1.6"
+        labels:
+          module: default
       # Switches using a different password -- add one block per module.
       - targets:
-          - switch-office.lan
-        params:
-          module: [office]
+          - "switch-office.lan"
+        labels:
+          module: office
     relabel_configs:
       - source_labels: [__address__]
         target_label: __param_target
+      - source_labels: [module]
+        target_label: __param_module
       - source_labels: [__param_target]
         target_label: instance
-      - source_labels: [__param_module]
-        target_label: module
       - target_label: __address__
         replacement: localhost:9493   # the exporter itself
 ```
