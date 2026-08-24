@@ -121,6 +121,11 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=args.log_level, format="%(asctime)s %(levelname)s %(name)s %(message)s"
     )
+    if args.log_level != "DEBUG":
+        # py_netgear_plus logs routine per-request detail (including raw
+        # response snippets) at INFO, which drowns out the exporter's own
+        # logs. Keep it quiet unless the user asks for DEBUG.
+        logging.getLogger("py_netgear_plus").setLevel(logging.WARNING)
 
     try:
         config = load_config(args.config)
