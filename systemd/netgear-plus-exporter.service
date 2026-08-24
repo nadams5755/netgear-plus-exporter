@@ -1,0 +1,22 @@
+[Unit]
+Description=netgear-plus-exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Adjust these paths for your install location.
+WorkingDirectory=/opt/netgear-plus-exporter
+ExecStart=/opt/netgear-plus-exporter/.venv/bin/netgear-plus-exporter \
+    --config /opt/netgear-plus-exporter/netgear_plus.yml \
+    --web.listen-address 0.0.0.0 \
+    --web.listen-port 9493
+Restart=on-failure
+RestartSec=5s
+DynamicUser=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadOnlyPaths=/opt/netgear-plus-exporter
+
+[Install]
+WantedBy=multi-user.target
