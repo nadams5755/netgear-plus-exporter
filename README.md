@@ -1,0 +1,165 @@
+# netgear-plus-exporter
+
+A Prometheus exporter for NETGEAR "Plus" series smart-managed switches (GS3xx/GS1xx/JGS/MS/XS
+models with a local web UI but no SNMP or CLI). It uses
+[`py-netgear-plus`](https://github.com/foxey/py-netgear-plus) to log in to each switch's web UI
+and scrape port traffic, link status, CRC errors, and PoE stats.
+
+The exporter follows the same **multi-target `/probe` pattern** as `snmp_exporter` and
+`blackbox_exporter`, including how configuration is split between the two files:
+
+- `netgear_plus.yml` (the exporter's own config) defines a small number of reusable
+  **modules** -- named credential profiles -- the same way snmp_exporter's `snmp.yml` defines
+  reusable auth modules. It does *not* list individual switches.
+- `prometheus.yml` lists the actual switch inventory (`target`) and, per target group, which
+  module's credentials to use (`module`) -- exactly where snmp_exporter puts that information too.
+
+So switches are inventoried in exactly one place (`prometheus.yml`); `netgear_plus.yml` only grows
+when you introduce a *new password*, not a new switch.
+
+## Install (development)
+
+```console
+$ python3 -m venv .venv
+$ source .venv/bin/activate
+$ pip install -e ".[dev]"
+```
+
+The project always runs inside this virtualenv -- there's no supported system-wide install path.
+
+## Running tests
+
+```console
+$ make test
+```
+
+This creates/updates `.venv` if needed (re-run automatically whenever `pyproject.toml` changes),
+then runs `pytest` followed by `ruff check .`. Equivalent to running those two manually with the
+virtualenv from above activated. `pytest` covers config parsing, the metrics mapping, and the HTTP
+server (including the concurrency behavior described in "Slow switches" below) against a fake
+connector -- no real switch or network access needed.
+
+Other targets: `make venv` (just create/update the virtualenv), `make lint` (`ruff check .` only),
+`make clean` (remove `.venv` and caches).
+
+## Configure
+
+Copy [`netgear_plus.yml.example`](netgear_plus.yml.example) to `netgear_plus.yml` and define one
+module per distinct password your switches use -- most setups only need `default`:
+
+```yaml
+modules:
+  default:
+    password: "changeme"
+  office:
+    password: "changeme2"
+    model: GS308EPP   # optional, skips autodetection
+```
+
+Run the exporter:
+
+```console
+$ netgear-plus-exporter --config netgear_plus.yml --web.listen-port 9493
+```
+
+Try a probe directly:
+
+```console
+$ curl 'http://localhost:9493/probe?target=192.168.1.5&module=default'
+```
+
+`module` may be omitted if the target uses the `default` module.
+
+## Wire it up to Prometheus
+
+```yaml
+scrape_configs:
+  - job_name: netgear_plus
+    scrape_interval: 30s
+    scrape_timeout: 30s        # see "Slow switches" below -- raise if needed
+    static_configs:
+      # Switches using the 'default' module's password.
+      - targets:
+          - 192.168.1.5
+          - 192.168.1.6
+        params:
+          module: [default]
+      # Switches using a different password -- add one block per module.
+      - targets:
+          - switch-office.lan
+        params:
+          module: [office]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - source_labels: [__param_module]
+        target_label: module
+      - target_label: __address__
+        replacement: localhost:9493   # the exporter itself
+```
+
+Prometheus scrapes `http://localhost:9493/probe?target=<address>&module=<name>` for each entry in
+`static_configs`, exactly as it would `snmp_exporter`. Adding, removing, or relabeling a switch is
+a `prometheus.yml`-only change; `netgear_plus.yml` and the exporter process are untouched unless
+you're introducing a new password. The exporter's own process/build metrics live on `GET
+/metrics`, separate from per-switch data on `/probe`.
+
+## Slow switches
+
+NETGEAR Plus switches have slow embedded web servers -- a single probe issues several sequential
+requests (metadata, port status, port statistics, and for PoE models, PoE config/status), and
+each of those can individually take multiple seconds to respond. Two things to tune if you see
+probe failures or timeouts:
+
+- **`scrape_timeout`** in `prometheus.yml` for this job: the default of 10s is usually too short.
+  Start around 30s and increase if you still see timeouts.
+- **`--probe-timeout`** (default 20s): the per-HTTP-request timeout the exporter uses when talking
+  to a switch. A full probe can issue up to ~5 sequential requests, so worst case probe duration
+  is roughly `5 * probe-timeout`. Watch `netgear_plus_probe_duration_seconds` after running for a
+  while to tune both values to your actual hardware.
+
+If a probe for a given target is still in flight when another scrape of the *same* target comes
+in (e.g. a retry after a slow response), the exporter fails that second request immediately with
+`503` rather than queuing it -- these switches appear to support only one active session at a
+time, so queuing would just stack up worker threads behind an already-slow device. Different
+targets are always probed concurrently, bounded by `--web.max-concurrent-probes` (default 10).
+
+## Metrics
+
+All switch metrics are prefixed `netgear_plus_` and carry a `target` label (the value from the
+scrape's `target` param); per-port metrics also carry a `port` label.
+
+| Metric | Type | Notes |
+| --- | --- | --- |
+| `netgear_plus_up` | gauge | 1 if the probe succeeded |
+| `netgear_plus_probe_duration_seconds` | gauge | wall-clock time of the probe |
+| `netgear_plus_switch_info` | gauge | labels: name, serial_number, bootloader, firmware, ip |
+| `netgear_plus_port_link_up` | gauge | |
+| `netgear_plus_port_link_speed_mbps` | gauge | negotiated speed, 0 if down/unknown |
+| `netgear_plus_port_receive_bytes_total` / `_transmit_bytes_total` | counter | cumulative since switch boot; see precision note below |
+| `netgear_plus_port_receive_speed_bytes` / `_transmit_speed_bytes` | gauge | bytes/sec, as computed by py-netgear-plus over its own polling interval |
+| `netgear_plus_port_crc_errors_total` | counter | see known upstream limitation below |
+| `netgear_plus_port_poe_status` | gauge | PoE-capable models only |
+| `netgear_plus_port_poe_power_watts` | gauge | PoE-capable models only |
+
+**Precision note:** py-netgear-plus's public API reports traffic in megabytes (rounded to 0.01
+MB), not raw bytes, so the byte counters above carry roughly +/-10KB of quantization noise --
+this is a limitation of the upstream library, not of the exporter.
+
+**Known upstream limitation:** as of `py-netgear-plus` 0.6.4, `netgear_plus_port_crc_errors_total` is
+only populated for the highest-numbered port on a switch due to a loop-variable bug in that
+library's `_updated_switch_data()`, not because other ports genuinely have zero errors. This will
+self-correct if/when that's fixed upstream.
+
+## Deploying
+
+An example systemd unit is in [`systemd/netgear-plus-exporter.service`](systemd/netgear-plus-exporter.service).
+Adjust the paths for wherever you install the venv and `netgear_plus.yml`, then:
+
+```console
+$ sudo cp systemd/netgear-plus-exporter.service /etc/systemd/system/
+$ sudo systemctl daemon-reload
+$ sudo systemctl enable --now netgear-plus-exporter
+```

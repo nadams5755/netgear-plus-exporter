@@ -1,0 +1,20 @@
+# netgear-plus-exporter config file.
+#
+# Defines reusable credential "modules", the same way snmp_exporter's
+# snmp.yml defines reusable auth modules (not one entry per device). The
+# actual inventory of switches -- and which module each one uses -- lives in
+# prometheus.yml, not here. Copy this file to netgear_plus.yml (or point
+# --config / NETGEAR_PLUS_EXPORTER_CONFIG at a path of your choosing) and
+# edit it in place -- restart the exporter to pick up changes.
+
+modules:
+  # Requests that omit '&module=' use this one.
+  default:
+    password: "changeme"
+
+  # Only add more modules if some switches use a different password.
+  office:
+    password: "changeme2"
+    # Optional: skip model autodetection (saves a round trip) by pinning the
+    # exact model name reported by py-netgear-plus, e.g.:
+    # model: GS308EPP
