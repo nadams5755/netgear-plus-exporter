@@ -25,7 +25,20 @@ $ source .venv/bin/activate
 $ pip install -e ".[dev]"
 ```
 
+(`make venv` does the same thing, and is what `make test` uses to set up its virtualenv --
+see "Running tests" below.)
+
 The project always runs inside this virtualenv -- there's no supported system-wide install path.
+`pip install -e` builds the `netgear-plus-exporter` console script, from the `[project.scripts]`
+entry point in `pyproject.toml`, straight into `.venv/bin/netgear-plus-exporter`. That's the exact
+binary the example systemd unit's `ExecStart` points at, so once this step is done you can either
+run it directly:
+
+```console
+$ .venv/bin/netgear-plus-exporter --config netgear_plus.yml
+```
+
+or, with the virtualenv activated, just `netgear-plus-exporter ...` (see below).
 
 ## Running tests
 
