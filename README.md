@@ -55,6 +55,31 @@ connector -- no real switch or network access needed.
 Other targets: `make venv` (just create/update the virtualenv), `make lint` (`ruff check .` only),
 `make clean` (remove `.venv` and caches).
 
+### Integration tests (real hardware)
+
+`make test-integration` runs a separate, opt-in suite
+([`tests/integration/`](tests/integration/test_live_switches.py)) against an already-running
+`netgear-plus-exporter` process and real switches -- not fakes. It's excluded from `make test` /
+plain `pytest` via the `integration` marker, and always runs serially (no pytest-xdist): concurrent
+probes of the *same* target would race the exporter's own single-flight lock.
+
+```console
+$ NETGEAR_PLUS_EXPORTER_URL=http://localhost:9493 \
+  NETGEAR_PLUS_INTEGRATION_TARGETS="192.168.1.5,192.168.1.6:office" \
+  make test-integration
+```
+
+Both env vars are optional (defaults: `http://localhost:9493`, and a placeholder target list you
+should override). `NETGEAR_PLUS_INTEGRATION_TARGETS` is a comma-separated `host[:module]` list; a
+target with no `:module` suffix uses the `default` module. If the exporter isn't reachable at
+`NETGEAR_PLUS_EXPORTER_URL`, the whole suite skips cleanly rather than failing.
+
+Each target is probed twice (to check that the receive-bytes counter is non-decreasing) with a few
+retries on transient failure, since real Plus switches are slow enough that an occasional failed
+probe isn't on its own a bug -- see "Slow switches" below. A target that fails every retry attempt
+is a real signal worth investigating (wrong password for its module, the switch being unreachable,
+or an unsupported model), not a flaky test.
+
 ## Configure
 
 Copy [`netgear_plus.yml.example`](netgear_plus.yml.example) to `netgear_plus.yml` and define one

@@ -46,4 +46,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-n auto"
+addopts = "-n auto -m \"not integration\""
+markers = [
+  "integration: requires a live netgear-plus-exporter process and real switches; opt-in only, see 'make test-integration'",
+]
