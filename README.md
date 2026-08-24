@@ -154,16 +154,20 @@ you're introducing a new password. The exporter's own process/build metrics live
 ## Slow switches
 
 NETGEAR Plus switches have slow embedded web servers -- a single probe issues several sequential
-requests (metadata, port status, port statistics, and for PoE models, PoE config/status), and
-each of those can individually take multiple seconds to respond. Two things to tune if you see
-probe failures or timeouts:
+requests (login, metadata, port status, port statistics, and for PoE models, PoE config/status,
+then logout), and each of those can individually take multiple seconds to respond. Two things to
+tune if you see probe failures or timeouts:
 
 - **`scrape_timeout`** in `prometheus.yml` for this job: the default of 10s is usually too short.
   Start around 30s and increase if you still see timeouts.
 - **`--probe-timeout`** (default 20s): the per-HTTP-request timeout the exporter uses when talking
-  to a switch. A full probe can issue up to ~5 sequential requests, so worst case probe duration
-  is roughly `5 * probe-timeout`. Watch `netgear_plus_probe_duration_seconds` after running for a
+  to a switch. A full probe can issue up to ~6 sequential requests, so worst case probe duration
+  is roughly `6 * probe-timeout`. Watch `netgear_plus_probe_duration_seconds` after running for a
   while to tune both values to your actual hardware.
+
+Every probe logs in, collects, and logs back out again, rather than keeping a session open
+between scrapes -- these switches allow only one session at a time, and holding one open for the
+whole polling interval would lock a human admin out of the web UI.
 
 If a probe for a given target is still in flight when another scrape of the *same* target comes
 in (e.g. a retry after a slow response), the exporter fails that second request immediately with
