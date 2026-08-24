@@ -101,7 +101,20 @@ class _RequestHandler(http.server.BaseHTTPRequestHandler):
         try:
             with self.server.pool.acquire(target, module_config) as connector:
                 connector.get_login_cookie()
-                switch_data = connector.get_switch_infos()
+                try:
+                    switch_data = connector.get_switch_infos()
+                finally:
+                    # Log back out once this probe's collection is done,
+                    # rather than leaving the session open between scrapes:
+                    # these switches allow only one session at a time, and a
+                    # session held by the exporter locks a human admin out of
+                    # the web UI.
+                    try:
+                        connector.delete_login_cookie()
+                    except Exception:
+                        _LOGGER.debug(
+                            "logout failed for target %s", target, exc_info=True
+                        )
             up = True
         except TargetBusyError:
             PROBES_TOTAL.labels(result="busy").inc()

@@ -4,7 +4,12 @@ Reusing a connector across probes matters for correctness, not just
 efficiency: py-netgear-plus computes per-port rate/speed fields as deltas
 against state stored on the connector instance (``_previous_data``). A fresh
 connector per scrape would make every rate compute against no prior sample.
-Reusing the connector also keeps the login session cookie warm.
+
+The login session itself is *not* kept warm between probes, though: each
+probe logs in, collects, and logs back out again (see server.py). These
+switches allow only one session at a time, so holding one open between
+scrapes would lock a human admin out of the web UI for the entire polling
+interval.
 """
 
 from __future__ import annotations

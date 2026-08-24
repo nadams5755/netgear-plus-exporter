@@ -18,8 +18,11 @@ class FakeConnector:
         self._switch_data = switch_data or {"switch_ip": target, "port_1_status": "on"}
         self._sleep_seconds = sleep_seconds
         self._fail = fail
+        self.login_calls = 0
+        self.logout_calls = 0
 
     def get_login_cookie(self):
+        self.login_calls += 1
         return True
 
     def get_switch_infos(self):
@@ -28,6 +31,10 @@ class FakeConnector:
         if self._fail:
             raise RuntimeError("boom")
         return self._switch_data
+
+    def delete_login_cookie(self):
+        self.logout_calls += 1
+        return True
 
 
 @pytest.fixture
@@ -86,6 +93,31 @@ def test_probe_success_returns_metrics(make_server):
     status, body = _get(server, "/probe?target=t1")
     assert status == 200
     assert 'netgear_plus_up{target="t1"} 1.0' in body
+
+
+def test_probe_success_logs_out_after_collecting(make_server):
+    fake = FakeConnector("t1")
+    server = make_server({"t1": fake})
+    _get(server, "/probe?target=t1")
+    assert fake.login_calls == 1
+    assert fake.logout_calls == 1
+
+
+def test_probe_failure_still_logs_out(make_server):
+    fake = FakeConnector("t1", fail=True)
+    server = make_server({"t1": fake})
+    _get(server, "/probe?target=t1")
+    assert fake.login_calls == 1
+    assert fake.logout_calls == 1
+
+
+def test_probe_logs_in_again_on_every_scrape(make_server):
+    fake = FakeConnector("t1")
+    server = make_server({"t1": fake})
+    _get(server, "/probe?target=t1")
+    _get(server, "/probe?target=t1")
+    assert fake.login_calls == 2
+    assert fake.logout_calls == 2
 
 
 def test_probe_defaults_to_default_module(make_server):
