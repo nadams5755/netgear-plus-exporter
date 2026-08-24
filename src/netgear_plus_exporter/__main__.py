@@ -2,14 +2,41 @@
 
 from __future__ import annotations
 
-import argparse
-import logging
-import os
 import sys
 
-from . import __version__
-from .config import ConfigError, load_config
-from .server import create_server
+MIN_PYTHON = (3, 10)
+
+
+def _python_version_error(version_info, minimum=MIN_PYTHON):
+    """Return an error message if version_info is below minimum, else None.
+
+    Deliberately checked and acted on before any other import in this file:
+    the rest of the package uses syntax (e.g. `X | Y` union type hints) that
+    is only meaningful on Python >= minimum, so importing those modules
+    under an older interpreter would surface a much less helpful error than
+    this explicit, early check.
+    """
+    if tuple(version_info[:2]) < minimum:
+        found = f"{version_info[0]}.{version_info[1]}.{version_info[2]}"
+        return (
+            f"netgear-plus-exporter requires Python {minimum[0]}.{minimum[1]}+ "
+            f"(found {found})."
+        )
+    return None
+
+
+_version_error = _python_version_error(sys.version_info)
+if _version_error is not None:
+    sys.stderr.write(_version_error + "\n")
+    sys.exit(1)
+
+import argparse  # noqa: E402
+import logging  # noqa: E402
+import os  # noqa: E402
+
+from . import __version__  # noqa: E402
+from .config import ConfigError, load_config  # noqa: E402
+from .server import create_server  # noqa: E402
 
 _LOGGER = logging.getLogger(__name__)
 
