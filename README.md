@@ -19,6 +19,12 @@ when you introduce a *new password*, not a new switch.
 
 ## Install (development)
 
+Requires **Python 3.10+**. `pip install` already refuses to install this package under an older
+interpreter (it's declared via `requires-python` in `pyproject.toml`), and `netgear-plus-exporter`
+also checks at startup and exits with a clear error rather than an interpreter crash, in case an
+older Python ever ends up running it some other way (e.g. `--ignore-requires-python`, or invoking
+the package directly without going through `pip install`).
+
 ```console
 $ python3 -m venv .venv
 $ source .venv/bin/activate
