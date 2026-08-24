@@ -202,6 +202,13 @@ only populated for the highest-numbered port on a switch due to a loop-variable 
 library's `_updated_switch_data()`, not because other ports genuinely have zero errors. This will
 self-correct if/when that's fixed upstream.
 
+**Alert on `netgear_plus_up`, not the built-in `up`.** Like `blackbox_exporter` and
+`snmp_exporter`, this exporter is scraped through `/probe`, so Prometheus's automatic
+`up{job="netgear_plus"}` series only reflects whether *this exporter process* answered the scrape
+-- it stays `1` even if every switch is unreachable, since the exporter itself is still up.
+`netgear_plus_up{target="..."}` is the one that reflects whether the probe of that specific switch
+actually succeeded.
+
 ## Deploying
 
 An example systemd unit is in [`systemd/netgear-plus-exporter.service`](systemd/netgear-plus-exporter.service).
