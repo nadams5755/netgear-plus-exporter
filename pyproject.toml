@@ -17,7 +17,7 @@ classifiers = [
 ]
 keywords = ["netgear", "prometheus", "exporter", "switch"]
 dependencies = [
-  "py-netgear-plus>=0.6.4",
+  "py-netgear-plus @ git+https://github.com/nadams5755/py-netgear-plus.git",
   "prometheus-client>=0.20",
   "PyYAML>=6.0",
 ]
@@ -33,6 +33,9 @@ Homepage = "https://github.com/nadams5755/netgear-plus-exporter"
 
 [tool.hatch.version]
 path = "src/netgear_plus_exporter/__init__.py"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/netgear_plus_exporter"]
