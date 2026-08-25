@@ -103,6 +103,12 @@ def build_metric_families(
         "PoE power draw on a port, in watts (PoE-capable models only).",
         labels=["target", "port"],
     )
+    port_info = GaugeMetricFamily(
+        "netgear_plus_port_info",
+        "Port identity metadata; value is always 1. Only emitted for ports with a"
+        " description configured on the switch.",
+        labels=["target", "port", "description"],
+    )
 
     for port_number in _port_numbers(switch_data):
         port = str(port_number)
@@ -111,6 +117,10 @@ def build_metric_families(
         status = switch_data.get(f"port_{port_number}_status")
         if status is not None:
             link_up.add_metric(labels, 1.0 if status == "on" else 0.0)
+
+        description = switch_data.get(f"port_{port_number}_description")
+        if description is not None:
+            port_info.add_metric([target, port, str(description)], 1.0)
 
         speed_mbps = switch_data.get(f"port_{port_number}_connection_speed")
         if speed_mbps is not None:
@@ -134,9 +144,6 @@ def build_metric_families(
 
         crc = switch_data.get(f"port_{port_number}_crc_errors")
         if crc is not None:
-            # Known py-netgear-plus limitation: as of 0.6.4 this key is only
-            # populated for the highest-numbered port due to a loop-variable
-            # bug upstream, not because other ports had zero errors.
             crc_errors.add_metric(labels, crc)
 
         poe_active = switch_data.get(f"port_{port_number}_poe_power_active")
@@ -151,6 +158,7 @@ def build_metric_families(
         [
             link_up,
             link_speed,
+            port_info,
             rx_bytes,
             tx_bytes,
             rx_speed,
