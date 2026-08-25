@@ -187,20 +187,16 @@ scrape's `target` param); per-port metrics also carry a `port` label.
 | `netgear_plus_switch_info` | gauge | labels: name, serial_number, bootloader, firmware, ip |
 | `netgear_plus_port_link_up` | gauge | |
 | `netgear_plus_port_link_speed_mbps` | gauge | negotiated speed, 0 if down/unknown |
+| `netgear_plus_port_info` | gauge | labels: description; only emitted for ports with a description configured on the switch |
 | `netgear_plus_port_receive_bytes_total` / `_transmit_bytes_total` | counter | cumulative since switch boot; see precision note below |
 | `netgear_plus_port_receive_speed_bytes` / `_transmit_speed_bytes` | gauge | bytes/sec, as computed by py-netgear-plus over its own polling interval |
-| `netgear_plus_port_crc_errors_total` | counter | see known upstream limitation below |
+| `netgear_plus_port_crc_errors_total` | counter | |
 | `netgear_plus_port_poe_status` | gauge | PoE-capable models only |
 | `netgear_plus_port_poe_power_watts` | gauge | PoE-capable models only |
 
 **Precision note:** py-netgear-plus's public API reports traffic in megabytes (rounded to 0.01
 MB), not raw bytes, so the byte counters above carry roughly +/-10KB of quantization noise --
 this is a limitation of the upstream library, not of the exporter.
-
-**Known upstream limitation:** as of `py-netgear-plus` 0.6.4, `netgear_plus_port_crc_errors_total` is
-only populated for the highest-numbered port on a switch due to a loop-variable bug in that
-library's `_updated_switch_data()`, not because other ports genuinely have zero errors. This will
-self-correct if/when that's fixed upstream.
 
 **Alert on `netgear_plus_up`, not the built-in `up`.** Like `blackbox_exporter` and
 `snmp_exporter`, this exporter is scraped through `/probe`, so Prometheus's automatic

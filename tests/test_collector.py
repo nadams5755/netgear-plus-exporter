@@ -11,6 +11,7 @@ FIXTURE = {
     "switch_firmware": "FW1",
     "port_1_status": "on",
     "port_1_connection_speed": 1000,
+    "port_1_description": "uplink",
     "port_1_sum_rx_mbytes": 12.34,
     "port_1_sum_tx_mbytes": 5.0,
     "port_1_speed_rx_mbytes": 0.01,
@@ -59,6 +60,11 @@ def test_successful_probe_maps_expected_fields() -> None:
     assert 'netgear_plus_port_link_up{port="1",target="t1"} 1.0' in text
     assert 'netgear_plus_port_link_up{port="2",target="t1"} 0.0' in text
     assert 'netgear_plus_port_link_speed_mbps{port="1",target="t1"} 1000.0' in text
+    # port_info only emitted for port 1, which has a description in the fixture.
+    info_lines = [
+        line for line in text.splitlines() if line.startswith("netgear_plus_port_info{")
+    ]
+    assert info_lines == ['netgear_plus_port_info{description="uplink",port="1",target="t1"} 1.0']
     # 12.34 MB -> bytes
     assert 'netgear_plus_port_receive_bytes_total{port="1",target="t1"} 1.234e+07' in text
     assert 'netgear_plus_port_poe_status{port="1",target="t1"} 1.0' in text
