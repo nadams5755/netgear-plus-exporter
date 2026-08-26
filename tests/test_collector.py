@@ -53,10 +53,19 @@ def test_down_probe_emits_no_switch_or_port_metrics() -> None:
 
 
 def test_successful_probe_maps_expected_fields() -> None:
-    families = build_metric_families(FIXTURE, target="t1", up=True, probe_duration_seconds=1.23)
+    families = build_metric_families(
+        FIXTURE, target="t1", up=True, probe_duration_seconds=1.23, model="GS308EPP"
+    )
     text = _render(families)
 
     assert 'netgear_plus_up{target="t1"} 1.0' in text
+    switch_info_lines = [
+        line for line in text.splitlines() if line.startswith("netgear_plus_switch_info{")
+    ]
+    assert switch_info_lines == [
+        'netgear_plus_switch_info{bootloader="BL1",firmware="FW1",ip="192.168.1.5",'
+        'model="GS308EPP",name="switch1",serial_number="SN123",target="t1"} 1.0'
+    ]
     assert 'netgear_plus_port_link_up{port="1",target="t1"} 1.0' in text
     assert 'netgear_plus_port_link_up{port="2",target="t1"} 0.0' in text
     assert 'netgear_plus_port_link_speed_mbps{port="1",target="t1"} 1000.0' in text

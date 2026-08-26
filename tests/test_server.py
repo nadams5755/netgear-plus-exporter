@@ -10,6 +10,10 @@ from netgear_plus_exporter.config import ExporterConfig, ModuleConfig
 from netgear_plus_exporter.server import create_server
 
 
+class _FakeSwitchModel:
+    MODEL_NAME = "GS308EPP"
+
+
 class FakeConnector:
     """Stands in for py_netgear_plus.NetgearSwitchConnector in tests."""
 
@@ -20,6 +24,7 @@ class FakeConnector:
         self._fail = fail
         self.login_calls = 0
         self.logout_calls = 0
+        self.switch_model = _FakeSwitchModel
 
     def get_login_cookie(self):
         self.login_calls += 1

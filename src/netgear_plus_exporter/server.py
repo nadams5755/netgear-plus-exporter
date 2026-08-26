@@ -98,11 +98,13 @@ class _RequestHandler(http.server.BaseHTTPRequestHandler):
             return
 
         start = time.perf_counter()
+        model = ""
         try:
             with self.server.pool.acquire(target, module_config) as connector:
                 connector.get_login_cookie()
                 try:
                     switch_data = connector.get_switch_infos()
+                    model = connector.switch_model.MODEL_NAME
                 finally:
                     # Log back out once this probe's collection is done,
                     # rather than leaving the session open between scrapes:
@@ -131,7 +133,7 @@ class _RequestHandler(http.server.BaseHTTPRequestHandler):
         duration = time.perf_counter() - start
         PROBES_TOTAL.labels(result="success" if up else "error").inc()
         families = build_metric_families(
-            switch_data, target=target, up=up, probe_duration_seconds=duration
+            switch_data, target=target, up=up, probe_duration_seconds=duration, model=model
         )
         self._respond(200, _render_probe_metrics(families), content_type=CONTENT_TYPE_LATEST)
 
