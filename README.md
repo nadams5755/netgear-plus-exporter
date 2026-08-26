@@ -215,3 +215,11 @@ $ sudo cp systemd/netgear-plus-exporter.service /etc/systemd/system/
 $ sudo systemctl daemon-reload
 $ sudo systemctl enable --now netgear-plus-exporter
 ```
+
+## Dashboard
+
+Not a wealth of information from the switches but I put together a Grafana dashboard.
+
+![Dashboard1](https://github.com/nadams5755/netgear-plus-exporter/blob/main/dashboards/Screenshot%202026-08-25%20at%2021.10.29.png?raw=true)
+
+![Dashboard2](https://github.com/nadams5755/netgear-plus-exporter/blob/main/dashboards/Screenshot%202026-08-25%20at%2021.10.55.png?raw=true)
