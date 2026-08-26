@@ -37,6 +37,7 @@ def build_metric_families(
     target: str,
     up: bool,
     probe_duration_seconds: float,
+    model: str = "",
 ) -> list[Metric]:
     """Build the list of metric families for a single /probe response."""
     up_family = GaugeMetricFamily(
@@ -56,7 +57,7 @@ def build_metric_families(
     if not up:
         return families
 
-    families.append(_switch_info_family(switch_data, target))
+    families.append(_switch_info_family(switch_data, target, model))
 
     rx_bytes = CounterMetricFamily(
         "netgear_plus_port_receive_bytes",
@@ -171,11 +172,11 @@ def build_metric_families(
     return families
 
 
-def _switch_info_family(switch_data: dict[str, Any], target: str) -> Metric:
+def _switch_info_family(switch_data: dict[str, Any], target: str, model: str) -> Metric:
     info = GaugeMetricFamily(
         "netgear_plus_switch_info",
         "Switch identity metadata; value is always 1.",
-        labels=["target", "name", "serial_number", "bootloader", "firmware", "ip"],
+        labels=["target", "name", "serial_number", "bootloader", "firmware", "ip", "model"],
     )
     info.add_metric(
         [
@@ -185,6 +186,7 @@ def _switch_info_family(switch_data: dict[str, Any], target: str) -> Metric:
             str(switch_data.get("switch_bootloader") or ""),
             str(switch_data.get("switch_firmware") or ""),
             str(switch_data.get("switch_ip") or ""),
+            model,
         ],
         1.0,
     )

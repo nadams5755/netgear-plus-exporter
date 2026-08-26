@@ -184,7 +184,7 @@ scrape's `target` param); per-port metrics also carry a `port` label.
 | --- | --- | --- |
 | `netgear_plus_up` | gauge | 1 if the probe succeeded |
 | `netgear_plus_probe_duration_seconds` | gauge | wall-clock time of the probe |
-| `netgear_plus_switch_info` | gauge | labels: name, serial_number, bootloader, firmware, ip |
+| `netgear_plus_switch_info` | gauge | labels: name, serial_number, bootloader, firmware, ip, model |
 | `netgear_plus_port_link_up` | gauge | |
 | `netgear_plus_port_link_speed_mbps` | gauge | negotiated speed, 0 if down/unknown |
 | `netgear_plus_port_info` | gauge | labels: description; only emitted for ports with a description configured on the switch |
