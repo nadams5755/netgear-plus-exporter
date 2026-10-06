@@ -20,6 +20,7 @@ dependencies = [
   "py-netgear-plus @ git+https://github.com/nadams5755/py-netgear-plus.git",
   "prometheus-client>=0.20",
   "PyYAML>=6.0",
+  "urllib3==2.8.0",
 ]
 
 [project.optional-dependencies]
